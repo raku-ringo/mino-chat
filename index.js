@@ -14,14 +14,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Socket.IO (allow all origins for simplicity; tighten in production)
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-// In-memory stores (simple; restart clears state)
-let chatMessages = []; // { id, username, message, time, seed, reactions: {emoji:count} }
+// In-memory stores
+let chatMessages = []; // global chat messages
 const rooms = {}; // roomId -> { players: { socketId: username }, chat: [], game: {...} }
 
-// --- Utilities ---
+// Utilities
 function nowISO(){ return new Date().toISOString(); }
 
 // Othello helpers
@@ -61,10 +60,8 @@ function countPieces(board){
   return { black, white };
 }
 
-// --- REST API for global chat (not per-room) ---
-app.get('/api/messages', (req,res) => {
-  res.json(chatMessages);
-});
+// --- REST API (global chat) ---
+app.get('/api/messages', (req,res) => res.json(chatMessages));
 
 app.post('/api/messages', (req,res) => {
   const { username, message, time, reactions, seed } = req.body;
@@ -84,7 +81,6 @@ app.post('/api/messages', (req,res) => {
   res.status(201).json(newMsg);
 });
 
-// admin clear (global)
 app.post('/api/pass', (req,res) => {
   const { password } = req.body;
   if (password === "min113") {
@@ -96,35 +92,26 @@ app.post('/api/pass', (req,res) => {
   }
 });
 
-// --- Rooms API (optional) ---
+// Rooms list
 app.get('/api/rooms', (req,res) => {
   const list = Object.keys(rooms).map(id => ({
     id,
     players: Object.values(rooms[id].players || {}),
-    hasGame: !!rooms[id].game
+    hasGame: !!rooms[id].game,
+    gameStatus: rooms[id].game ? rooms[id].game.status : null
   }));
   res.json(list);
 });
 
-// Serve index by default
+// Serve index
 app.get('/', (req,res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
 // --- Socket.IO ---
 io.on('connection', (socket) => {
   console.log('connected', socket.id);
 
-  // Global chat reaction update (uses message id)
-  socket.on('updateReaction', ({ messageId, reaction }) => {
-    const msg = chatMessages.find(m => m.id === messageId);
-    if (!msg) return;
-    msg.reactions = msg.reactions || {};
-    msg.reactions[reaction] = (msg.reactions[reaction] || 0) + 1;
-    io.emit('updateReaction', { messageId, reactions: msg.reactions });
-  });
-
-  // Global chat send via socket (optional)
+  // Global chat via socket
   socket.on('sendMessage', (data) => {
-    // data should include username, message, time, seed
     const newMsg = {
       id: uuidv4(),
       username: data.username || '匿名',
@@ -137,15 +124,21 @@ io.on('connection', (socket) => {
     io.emit('newMessage', newMsg);
   });
 
-  // --- Room events ---
-  // joinRoom: { roomId, username }
+  socket.on('updateReaction', ({ messageId, reaction }) => {
+    const msg = chatMessages.find(m => m.id === messageId);
+    if (!msg) return;
+    msg.reactions = msg.reactions || {};
+    msg.reactions[reaction] = (msg.reactions[reaction] || 0) + 1;
+    io.emit('updateReaction', { messageId, reactions: msg.reactions });
+  });
+
+  // Room join/leave for chat & presence
   socket.on('joinRoom', ({ roomId, username }) => {
     if (!roomId) return;
     socket.join(roomId);
     if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
     rooms[roomId].players[socket.id] = username || '匿名';
     io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
-    // send chat history and game state
     socket.emit('chatHistory', rooms[roomId].chat || []);
     if (rooms[roomId].game) socket.emit('gameState', rooms[roomId].game);
   });
@@ -158,7 +151,7 @@ io.on('connection', (socket) => {
     if (Object.keys(rooms[roomId].players).length === 0) delete rooms[roomId];
   });
 
-  // room chat
+  // Room chat
   socket.on('roomMessage', (data) => {
     const { roomId } = data;
     if (!roomId) return;
@@ -168,14 +161,14 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('newRoomMessage', msg);
   });
 
-  // create game in room
+  // Create game in room
   socket.on('createGame', ({ roomId }) => {
     if (!roomId) return;
     if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
     rooms[roomId].game = {
       board: createInitialBoard(),
       turn: 1,
-      status: 'waiting',
+      status: 'waiting', // waiting -> playing -> finished
       players: {}, // color -> username
       lastMove: null,
       counts: countPieces(createInitialBoard())
@@ -183,17 +176,40 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('gameState', rooms[roomId].game);
   });
 
-  // join game (assign color)
+  // Join game (assign color). When two players assigned, start playing immediately.
   socket.on('joinGame', ({ roomId, username }) => {
-    if (!roomId || !rooms[roomId] || !rooms[roomId].game) return;
+    if (!roomId) return;
+    if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
+    if (!rooms[roomId].game) {
+      // create game automatically if none
+      rooms[roomId].game = {
+        board: createInitialBoard(),
+        turn: 1,
+        status: 'waiting',
+        players: {},
+        lastMove: null,
+        counts: countPieces(createInitialBoard())
+      };
+    }
     const game = rooms[roomId].game;
+    // If username already assigned to a color, ignore
+    if (game.players[1] === username || game.players[2] === username) {
+      io.to(roomId).emit('gameState', game);
+      return;
+    }
+    // Assign color if available
     if (!game.players[1]) game.players[1] = username;
-    else if (!game.players[2] && game.players[1] !== username) game.players[2] = username;
-    if (game.players[1] && game.players[2]) game.status = 'playing';
+    else if (!game.players[2]) game.players[2] = username;
+    // If both players present, start the game
+    if (game.players[1] && game.players[2]) {
+      game.status = 'playing';
+      game.turn = 1; // black starts
+      game.counts = countPieces(game.board);
+    }
     io.to(roomId).emit('gameState', game);
   });
 
-  // make move
+  // Make move
   socket.on('makeMove', ({ roomId, r, c, color }) => {
     if (!roomId || !rooms[roomId] || !rooms[roomId].game) return;
     const game = rooms[roomId].game;
@@ -217,19 +233,44 @@ io.on('connection', (socket) => {
     if (rooms[roomId].game) socket.emit('gameState', rooms[roomId].game);
   });
 
-  // disconnect cleanup
+  // Disconnect cleanup: remove from rooms and if they were a game player, remove assignment and set waiting
   socket.on('disconnect', () => {
     for (const roomId of Object.keys(rooms)) {
       if (rooms[roomId].players && rooms[roomId].players[socket.id]) {
         delete rooms[roomId].players[socket.id];
         io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
-        if (Object.keys(rooms[roomId].players).length === 0) delete rooms[roomId];
+      }
+      // If they were a game player, remove from game players
+      const g = rooms[roomId] && rooms[roomId].game;
+      if (g && g.players) {
+        let changed = false;
+        if (g.players[1] && Object.values(rooms[roomId].players).indexOf(g.players[1]) === -1) {
+          // player 1 disconnected (not present in room players)
+          g.players[1] = null;
+          changed = true;
+        }
+        if (g.players[2] && Object.values(rooms[roomId].players).indexOf(g.players[2]) === -1) {
+          g.players[2] = null;
+          changed = true;
+        }
+        if (changed) {
+          // normalize nulls to undefined
+          if (!g.players[1]) delete g.players[1];
+          if (!g.players[2]) delete g.players[2];
+          // if any player missing, set to waiting
+          g.status = 'waiting';
+          g.turn = 1;
+          io.to(roomId).emit('gameState', g);
+        }
+      }
+      // if no presence left, optionally delete room
+      if (rooms[roomId] && Object.keys(rooms[roomId].players).length === 0) {
+        delete rooms[roomId];
       }
     }
     console.log('disconnected', socket.id);
   });
 });
 
-// start
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
