@@ -1,8 +1,10 @@
+// index.js
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const path = require('path');
 const { Server } = require('socket.io');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,91 +14,222 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Socket.IO (allow all origins for simplicity; tighten in production)
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-let chatMessages = [];
-let users = []; 
+// In-memory stores (simple; restart clears state)
+let chatMessages = []; // { id, username, message, time, seed, reactions: {emoji:count} }
+const rooms = {}; // roomId -> { players: { socketId: username }, chat: [], game: {...} }
 
-app.get('/api/messages', (req, res) => {
+// --- Utilities ---
+function nowISO(){ return new Date().toISOString(); }
+
+// Othello helpers
+const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+function createInitialBoard(){
+  const b = Array.from({length:8},()=>Array(8).fill(0));
+  b[3][3]=2; b[3][4]=1; b[4][3]=1; b[4][4]=2;
+  return b;
+}
+function isOnBoard(r,c){ return r>=0 && r<8 && c>=0 && c<8; }
+function getFlips(board,r,c,color){
+  if(board[r][c] !== 0) return [];
+  const opp = color===1?2:1;
+  const flips = [];
+  for(const [dr,dc] of DIRS){
+    let rr=r+dr, cc=c+dc;
+    const line=[];
+    while(isOnBoard(rr,cc) && board[rr][cc]===opp){
+      line.push([rr,cc]); rr+=dr; cc+=dc;
+    }
+    if(line.length>0 && isOnBoard(rr,cc) && board[rr][cc]===color){
+      flips.push(...line);
+    }
+  }
+  return flips;
+}
+function hasAnyLegalMove(board,color){
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++) if(getFlips(board,r,c,color).length>0) return true;
+  return false;
+}
+function countPieces(board){
+  let black=0, white=0;
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    if(board[r][c]===1) black++;
+    if(board[r][c]===2) white++;
+  }
+  return { black, white };
+}
+
+// --- REST API for global chat (not per-room) ---
+app.get('/api/messages', (req,res) => {
   res.json(chatMessages);
 });
 
-app.post('/api/messages', (req, res) => {
+app.post('/api/messages', (req,res) => {
   const { username, message, time, reactions, seed } = req.body;
-  if (!username || !message || !time || !seed) {
-    return res.status(400).json({ error: 'Missing required fields (username, message, time, seed)' });
+  if (!username || !message || !time) {
+    return res.status(400).json({ error: 'Missing required fields (username, message, time)' });
   }
-  const userSeed = seed;
-  const newMessage = {
+  const newMsg = {
+    id: uuidv4(),
     username,
     message,
     time,
-    reactions: reactions || { "👍": 0, "😡": 0 },
-    seed: userSeed
+    seed: seed || '',
+    reactions: reactions || {}
   };
-  chatMessages.push(newMessage);
-  io.emit("newMessage", newMessage);
-  res.status(201).json(newMessage);
+  chatMessages.push(newMsg);
+  io.emit('newMessage', newMsg);
+  res.status(201).json(newMsg);
 });
 
-
-app.get('/user', (req, res) => {
-  res.json({
-    userCount: users.length,
-    userIds: users
-  });
-});
-
-app.all('/api/pass', (req, res, next) => {
-  const isPostMethod = req.method === 'POST';
-  const requestedWith = req.headers['x-requested-with'];
-  if (!isPostMethod || !requestedWith || requestedWith !== 'fetch') {
-    return res.sendFile(path.join(__dirname, 'public', 'gisou.html'));
-  }
-  next();
-});
-
-app.post('/api/pass', (req, res) => {
+// admin clear (global)
+app.post('/api/pass', (req,res) => {
   const { password } = req.body;
   if (password === "min113") {
     chatMessages = [];
-    io.emit("clearMessages");
+    io.emit('clearMessages');
     return res.status(200).json({ message: "全てのメッセージを削除しました。" });
   } else {
     return res.status(403).json({ error: "パスワードが違います。" });
   }
 });
 
+// --- Rooms API (optional) ---
+app.get('/api/rooms', (req,res) => {
+  const list = Object.keys(rooms).map(id => ({
+    id,
+    players: Object.values(rooms[id].players || {}),
+    hasGame: !!rooms[id].game
+  }));
+  res.json(list);
+});
 
+// Serve index by default
+app.get('/', (req,res) => res.sendFile(path.join(__dirname,'public','index.html')));
+
+// --- Socket.IO ---
 io.on('connection', (socket) => {
-  console.log('ユーザーが接続しました: ' + socket.id);
-  users.push(socket.id); 
+  console.log('connected', socket.id);
 
-
-  socket.on('sendMessage', (data) => {
-    chatMessages.push(data);
-    io.emit("newMessage", data);
-  });
-
+  // Global chat reaction update (uses message id)
   socket.on('updateReaction', ({ messageId, reaction }) => {
-    if (messageId >= 0 && messageId < chatMessages.length) {
-      let msg = chatMessages[messageId];
-      if (msg.reactions && msg.reactions.hasOwnProperty(reaction)) {
-        msg.reactions[reaction] += 1;
-      } else {
-        msg.reactions[reaction] = 1;
-      }
-      io.emit("updateReaction", { messageId, reactions: msg.reactions });
-    }
+    const msg = chatMessages.find(m => m.id === messageId);
+    if (!msg) return;
+    msg.reactions = msg.reactions || {};
+    msg.reactions[reaction] = (msg.reactions[reaction] || 0) + 1;
+    io.emit('updateReaction', { messageId, reactions: msg.reactions });
   });
 
+  // Global chat send via socket (optional)
+  socket.on('sendMessage', (data) => {
+    // data should include username, message, time, seed
+    const newMsg = {
+      id: uuidv4(),
+      username: data.username || '匿名',
+      message: data.message || '',
+      time: data.time || nowISO(),
+      seed: data.seed || '',
+      reactions: {}
+    };
+    chatMessages.push(newMsg);
+    io.emit('newMessage', newMsg);
+  });
+
+  // --- Room events ---
+  // joinRoom: { roomId, username }
+  socket.on('joinRoom', ({ roomId, username }) => {
+    if (!roomId) return;
+    socket.join(roomId);
+    if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
+    rooms[roomId].players[socket.id] = username || '匿名';
+    io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
+    // send chat history and game state
+    socket.emit('chatHistory', rooms[roomId].chat || []);
+    if (rooms[roomId].game) socket.emit('gameState', rooms[roomId].game);
+  });
+
+  socket.on('leaveRoom', ({ roomId }) => {
+    if (!roomId || !rooms[roomId]) return;
+    socket.leave(roomId);
+    delete rooms[roomId].players[socket.id];
+    io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
+    if (Object.keys(rooms[roomId].players).length === 0) delete rooms[roomId];
+  });
+
+  // room chat
+  socket.on('roomMessage', (data) => {
+    const { roomId } = data;
+    if (!roomId) return;
+    if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
+    const msg = { id: uuidv4(), ...data };
+    rooms[roomId].chat.push(msg);
+    io.to(roomId).emit('newRoomMessage', msg);
+  });
+
+  // create game in room
+  socket.on('createGame', ({ roomId }) => {
+    if (!roomId) return;
+    if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
+    rooms[roomId].game = {
+      board: createInitialBoard(),
+      turn: 1,
+      status: 'waiting',
+      players: {}, // color -> username
+      lastMove: null,
+      counts: countPieces(createInitialBoard())
+    };
+    io.to(roomId).emit('gameState', rooms[roomId].game);
+  });
+
+  // join game (assign color)
+  socket.on('joinGame', ({ roomId, username }) => {
+    if (!roomId || !rooms[roomId] || !rooms[roomId].game) return;
+    const game = rooms[roomId].game;
+    if (!game.players[1]) game.players[1] = username;
+    else if (!game.players[2] && game.players[1] !== username) game.players[2] = username;
+    if (game.players[1] && game.players[2]) game.status = 'playing';
+    io.to(roomId).emit('gameState', game);
+  });
+
+  // make move
+  socket.on('makeMove', ({ roomId, r, c, color }) => {
+    if (!roomId || !rooms[roomId] || !rooms[roomId].game) return;
+    const game = rooms[roomId].game;
+    if (game.status !== 'playing') return;
+    if (game.turn !== color) return;
+    const flips = getFlips(game.board, r, c, color);
+    if (flips.length === 0) return;
+    game.board[r][c] = color;
+    for (const [fr,fc] of flips) game.board[fr][fc] = color;
+    game.lastMove = { r, c, color, time: nowISO() };
+    game.counts = countPieces(game.board);
+    const opponent = color === 1 ? 2 : 1;
+    if (hasAnyLegalMove(game.board, opponent)) game.turn = opponent;
+    else if (hasAnyLegalMove(game.board, color)) game.turn = color;
+    else { game.status = 'finished'; game.turn = null; }
+    io.to(roomId).emit('gameState', game);
+  });
+
+  socket.on('requestGameState', ({ roomId }) => {
+    if (!roomId || !rooms[roomId]) return;
+    if (rooms[roomId].game) socket.emit('gameState', rooms[roomId].game);
+  });
+
+  // disconnect cleanup
   socket.on('disconnect', () => {
-    console.log('ユーザーが切断しました: ' + socket.id);
-    users = users.filter(id => id !== socket.id);
+    for (const roomId of Object.keys(rooms)) {
+      if (rooms[roomId].players && rooms[roomId].players[socket.id]) {
+        delete rooms[roomId].players[socket.id];
+        io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
+        if (Object.keys(rooms[roomId].players).length === 0) delete rooms[roomId];
+      }
+    }
+    console.log('disconnected', socket.id);
   });
 });
 
+// start
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`サーバー起動中 http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
