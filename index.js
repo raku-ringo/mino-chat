@@ -59,6 +59,15 @@ function countPieces(board){
   }
   return { black, white };
 }
+function computeLegalMoves(board, color){
+  const moves = [];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      if(getFlips(board,r,c,color).length>0) moves.push([r,c]);
+    }
+  }
+  return moves;
+}
 
 // --- REST API (global chat) ---
 app.get('/api/messages', (req,res) => res.json(chatMessages));
@@ -140,7 +149,7 @@ io.on('connection', (socket) => {
     rooms[roomId].players[socket.id] = username || '匿名';
     io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
     socket.emit('chatHistory', rooms[roomId].chat || []);
-    if (rooms[roomId].game) socket.emit('gameState', rooms[roomId].game);
+    if (rooms[roomId].game) socket.emit('gameState', enrichGameState(rooms[roomId].game));
   });
 
   socket.on('leaveRoom', ({ roomId }) => {
@@ -173,7 +182,7 @@ io.on('connection', (socket) => {
       lastMove: null,
       counts: countPieces(createInitialBoard())
     };
-    io.to(roomId).emit('gameState', rooms[roomId].game);
+    io.to(roomId).emit('gameState', enrichGameState(rooms[roomId].game));
   });
 
   // Join game (assign color). When two players assigned, start playing immediately.
@@ -181,7 +190,6 @@ io.on('connection', (socket) => {
     if (!roomId) return;
     if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
     if (!rooms[roomId].game) {
-      // create game automatically if none
       rooms[roomId].game = {
         board: createInitialBoard(),
         turn: 1,
@@ -194,7 +202,7 @@ io.on('connection', (socket) => {
     const game = rooms[roomId].game;
     // If username already assigned to a color, ignore
     if (game.players[1] === username || game.players[2] === username) {
-      io.to(roomId).emit('gameState', game);
+      io.to(roomId).emit('gameState', enrichGameState(game));
       return;
     }
     // Assign color if available
@@ -206,7 +214,7 @@ io.on('connection', (socket) => {
       game.turn = 1; // black starts
       game.counts = countPieces(game.board);
     }
-    io.to(roomId).emit('gameState', game);
+    io.to(roomId).emit('gameState', enrichGameState(game));
   });
 
   // Make move
@@ -225,12 +233,12 @@ io.on('connection', (socket) => {
     if (hasAnyLegalMove(game.board, opponent)) game.turn = opponent;
     else if (hasAnyLegalMove(game.board, color)) game.turn = color;
     else { game.status = 'finished'; game.turn = null; }
-    io.to(roomId).emit('gameState', game);
+    io.to(roomId).emit('gameState', enrichGameState(game));
   });
 
   socket.on('requestGameState', ({ roomId }) => {
     if (!roomId || !rooms[roomId]) return;
-    if (rooms[roomId].game) socket.emit('gameState', rooms[roomId].game);
+    if (rooms[roomId].game) socket.emit('gameState', enrichGameState(rooms[roomId].game));
   });
 
   // Disconnect cleanup: remove from rooms and if they were a game player, remove assignment and set waiting
@@ -240,30 +248,19 @@ io.on('connection', (socket) => {
         delete rooms[roomId].players[socket.id];
         io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
       }
-      // If they were a game player, remove from game players
       const g = rooms[roomId] && rooms[roomId].game;
       if (g && g.players) {
         let changed = false;
-        if (g.players[1] && Object.values(rooms[roomId].players).indexOf(g.players[1]) === -1) {
-          // player 1 disconnected (not present in room players)
-          g.players[1] = null;
-          changed = true;
-        }
-        if (g.players[2] && Object.values(rooms[roomId].players).indexOf(g.players[2]) === -1) {
-          g.players[2] = null;
-          changed = true;
-        }
+        // If a player name is no longer present in room presence, remove assignment
+        const presentNames = Object.values(rooms[roomId].players || {});
+        if (g.players[1] && presentNames.indexOf(g.players[1]) === -1) { delete g.players[1]; changed = true; }
+        if (g.players[2] && presentNames.indexOf(g.players[2]) === -1) { delete g.players[2]; changed = true; }
         if (changed) {
-          // normalize nulls to undefined
-          if (!g.players[1]) delete g.players[1];
-          if (!g.players[2]) delete g.players[2];
-          // if any player missing, set to waiting
           g.status = 'waiting';
           g.turn = 1;
-          io.to(roomId).emit('gameState', g);
+          io.to(roomId).emit('gameState', enrichGameState(g));
         }
       }
-      // if no presence left, optionally delete room
       if (rooms[roomId] && Object.keys(rooms[roomId].players).length === 0) {
         delete rooms[roomId];
       }
@@ -271,6 +268,20 @@ io.on('connection', (socket) => {
     console.log('disconnected', socket.id);
   });
 });
+
+// Enrich game state with legalMoves for current turn and for both colors (optional)
+function enrichGameState(game){
+  const copy = {
+    board: game.board,
+    turn: game.turn,
+    status: game.status,
+    players: game.players,
+    lastMove: game.lastMove,
+    counts: game.counts || countPieces(game.board),
+    legalMoves: game.turn ? computeLegalMoves(game.board, game.turn) : []
+  };
+  return copy;
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
