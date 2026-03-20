@@ -16,19 +16,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-// In-memory stores
-let chatMessages = []; // global chat messages
-const rooms = {}; // roomId -> { players: {}, chat: [], game: {...} }
-const admins = new Set(); // 管理者ユーザー名の集合
-
+let chatMessages = []; 
+const rooms = {}; 
+const admins = new Set(); 
 
 const ADMIN_PASSWORD = 'pluscrown';
 const ADMIN_REDIRECT_URL = 'https://mino-security.netlify.app';
 
-// Utilities
 function nowISO(){ return new Date().toISOString(); }
 
-// Othello helpers (same as before)
 const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 function createInitialBoard(){
   const b = Array.from({length:8},()=>Array(8).fill(0));
@@ -77,7 +73,7 @@ function determineWinner(board){
   const counts = countPieces(board);
   if(counts.black > counts.white) return { winner: 1, counts };
   if(counts.white > counts.black) return { winner: 2, counts };
-  return { winner: 0, counts }; // draw
+  return { winner: 0, counts };
 }
 
 // --- REST API ---
@@ -86,30 +82,31 @@ app.get('/api/messages', (req,res) => res.json(chatMessages));
 app.post('/api/messages', (req,res) => {
   const { username, message, time, reactions, seed } = req.body;
   if (!username || !message || !time) {
-    return res.status(400).json({ error: 'Missing required fields (username, message, time)' });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
+  
   const newMsg = {
     id: uuidv4(),
     username,
     message,
     time,
     seed: seed || '',
-    reactions: reactions || {}
+    reactions: reactions || {},
+    // seed が ADMIN_PASSWORD と一致する場合のみ isAdmin を true にする
+    isAdmin: (seed === ADMIN_PASSWORD)
   };
+  
   chatMessages.push(newMsg);
   io.emit('newMessage', newMsg);
   res.status(201).json(newMsg);
 });
 
-// 管理者ログイン API（パスワード直書き）
 app.post('/api/admin-login', (req,res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username and password required' });
   if (password === ADMIN_PASSWORD) {
     admins.add(username);
-    // 全クライアントへ管理者リスト更新を通知
     io.emit('adminUpdate', Array.from(admins));
-    // 成功時は管理用URLを返す
     return res.json({ ok: true, url: ADMIN_REDIRECT_URL });
   } else {
     return res.status(403).json({ ok: false, error: 'Invalid password' });
@@ -147,7 +144,6 @@ app.get('/', (req,res) => res.sendFile(path.join(__dirname,'public','index.html'
 io.on('connection', (socket) => {
   console.log('connected', socket.id);
 
-  // Global chat via socket
   socket.on('sendMessage', (data) => {
     const newMsg = {
       id: uuidv4(),
@@ -155,7 +151,8 @@ io.on('connection', (socket) => {
       message: data.message || '',
       time: data.time || nowISO(),
       seed: data.seed || '',
-      reactions: {}
+      reactions: {},
+      isAdmin: (data.seed === ADMIN_PASSWORD)
     };
     chatMessages.push(newMsg);
     io.emit('newMessage', newMsg);
@@ -169,14 +166,12 @@ io.on('connection', (socket) => {
     io.emit('updateReaction', { messageId, reactions: msg.reactions });
   });
 
-  // Room join/leave for chat & presence
   socket.on('joinRoom', ({ roomId, username }) => {
     if (!roomId) return;
     socket.join(roomId);
     if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
     rooms[roomId].players[socket.id] = username || '匿名';
     io.to(roomId).emit('roomUpdate', { players: Object.values(rooms[roomId].players), roomId });
-    socket.emit('chatHistory', rooms[roomId].chat || []);
     if (rooms[roomId].game) socket.emit('gameState', enrichGameState(rooms[roomId].game));
   });
 
@@ -188,17 +183,6 @@ io.on('connection', (socket) => {
     if (Object.keys(rooms[roomId].players).length === 0) delete rooms[roomId];
   });
 
-  // Room chat
-  socket.on('roomMessage', (data) => {
-    const { roomId } = data;
-    if (!roomId) return;
-    if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
-    const msg = { id: uuidv4(), ...data };
-    rooms[roomId].chat.push(msg);
-    io.to(roomId).emit('newRoomMessage', msg);
-  });
-
-  // Create game in room
   socket.on('createGame', ({ roomId, username }) => {
     if (!roomId) return;
     if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
@@ -210,14 +194,15 @@ io.on('connection', (socket) => {
       lastMove: null,
       counts: countPieces(createInitialBoard())
     };
-    // システムメッセージをグローバルチャットに追加（部屋作成通知）
+    
     const sysMsg = {
       id: uuidv4(),
       username: 'システム',
-      message: `${username || '誰か'} が部屋 "${roomId}" を作成しました。${username || '誰か'} が対戦相手を募集中です！`,
+      message: `${username || '誰か'} が部屋 "${roomId}" を作成しました。対戦相手を募集中です！`,
       time: nowISO(),
       seed: '',
-      reactions: {}
+      reactions: {},
+      isAdmin: true // システムメッセージは管理者扱い
     };
     chatMessages.push(sysMsg);
     io.emit('newMessage', sysMsg);
@@ -225,7 +210,6 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('gameState', enrichGameState(rooms[roomId].game));
   });
 
-  // Join game (assign color). When two players assigned, start playing immediately.
   socket.on('joinGame', ({ roomId, username }) => {
     if (!roomId) return;
     if (!rooms[roomId]) rooms[roomId] = { players: {}, chat: [], game: null };
@@ -251,7 +235,6 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('gameState', enrichGameState(game));
   });
 
-  // Make move
   socket.on('makeMove', ({ roomId, r, c, color }) => {
     if (!roomId || !rooms[roomId] || !rooms[roomId].game) return;
     const game = rooms[roomId].game;
@@ -281,7 +264,6 @@ io.on('connection', (socket) => {
     if (rooms[roomId].game) socket.emit('gameState', enrichGameState(rooms[roomId].game));
   });
 
-  // Disconnect cleanup
   socket.on('disconnect', () => {
     for (const roomId of Object.keys(rooms)) {
       if (rooms[roomId].players && rooms[roomId].players[socket.id]) {
@@ -306,7 +288,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Enrich game state
 function enrichGameState(game){
   const copy = {
     board: game.board,
