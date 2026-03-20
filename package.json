@@ -1,29 +1,18 @@
 {
-  "name": "simple-chat-server",
+  "name": "chat-othello-server",
   "version": "1.0.0",
-  "description": "Express + Socket.IO ベースのチャットサーバー",
   "main": "index.js",
-  "engines": {
-    "node": "18.x"
-  },
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "lint": "echo \"no lint configured\""
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
-  },
-  "keywords": [
-    "express",
-    "socket.io",
-    "chat"
-  ],
-  "author": "",
-  "license": "MIT"
+  }
 }
