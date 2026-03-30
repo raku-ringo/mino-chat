@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>学習塾 Manabis 東京校 | 個別指導・少人数クラス・大学受験対策</title>
+  <meta name="description" content="Manabis 東京校（渋谷区恵比寿）。個別指導と少人数クラスで基礎から大学受験まで。無料体験・学習プラン作成・オンライン対応。" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --accent:#0b6bff;
+      --accent-2:#ffb86b;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --text:#0f1724;
+      --muted:#6b7280;
+      --radius:14px;
+      --max-width:1200px;
+      --shadow: 0 10px 30px rgba(15,23,36,0.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#fff,var(--bg));color:var(--text);line-height:1.65}
+    .container{max-width:var(--max-width);margin:0 auto;padding:28px}
+    header.site-header{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:16px;border-radius:14px;box-shadow:var(--shadow);position:sticky;top:14px;z-index:40}
+    .inner{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:var(--max-width);margin:0 auto;padding:0 20px}
+    .brand{display:flex;align-items:center;gap:14px}
+    .brand img{width:64px;height:64px;border-radius:12px;object-fit:cover;border:2px solid rgba(255,255,255,0.14)}
+    .brand h1{font-size:20px;margin:0;font-weight:800}
+    nav a{color:rgba(255,255,255,0.95);text-decoration:none;margin-left:18px;font-weight:700}
+    .cta{background:rgba(255,255,255,0.12);padding:8px 14px;border-radius:12px;color:white;font-weight:800;text-decoration:none}
+    /* Hero */
+    .hero{margin-top:22px;display:grid;grid-template-columns:1fr 460px;gap:22px;align-items:stretch}
+    .hero-card{background:linear-gradient(180deg,#fff,var(--card));border-radius:16px;padding:32px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:center}
+    .hero h2{margin:0 0 10px 0;font-size:30px}
+    .lead{margin:0 0 18px 0;color:var(--muted)}
+    .features{display:flex;gap:12px;flex-wrap:wrap}
+    .feature{background:#f3f7ff;padding:10px 12px;border-radius:10px;font-weight:700;color:var(--accent)}
+    .hero-visual{border-radius:16px;overflow:hidden;position:relative;min-height:360px;box-shadow:var(--shadow)}
+    .hero-visual img{width:100%;height:100%;object-fit:cover;display:block}
+    .overlay-cta{position:absolute;left:18px;bottom:18px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;padding:10px 14px;border-radius:12px;font-weight:800}
+    /* Sections */
+    section{margin:28px 0}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:var(--shadow)}
+    .teacher{display:flex;gap:14px;align-items:center}
+    .teacher img{width:96px;height:96px;border-radius:12px;object-fit:cover;border:3px solid #fff;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+    .price{font-size:20px;font-weight:900;color:var(--accent)}
+    .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .gallery img{width:100%;height:160px;object-fit:cover;border-radius:10px}
+    .testimonials{display:flex;flex-direction:column;gap:12px}
+    .testimonial{background:linear-gradient(180deg,#fff,#f8fbff);padding:14px;border-radius:10px}
+    form.contact{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    form.contact label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    form.contact input, form.contact textarea, form.contact select{padding:12px;border-radius:10px;border:1px solid #e6eefc;font-size:14px;width:100%;background:linear-gradient(180deg,#fff,#fbfdff)}
+    form.contact textarea{grid-column:1 / -1;min-height:140px;resize:vertical}
+    .btn{background:var(--accent);color:white;padding:12px 16px;border-radius:12px;border:none;font-weight:800;cursor:pointer}
+    footer{margin-top:28px;padding:18px;border-radius:12px;background:#fff;box-shadow:var(--shadow)}
+    .muted{color:var(--muted)}
+    @media (max-width:980px){.hero{grid-template-columns:1fr}.grid-3{grid-template-columns:repeat(2,1fr)}.gallery{grid-template-columns:repeat(2,1fr)}form.contact{grid-template-columns:1fr}}
+    @media (max-width:560px){.grid-3{grid-template-columns:1fr}.gallery img{height:140px}.brand h1{font-size:16px}.teacher img{width:72px;height:72px}}
+  </style>
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <div class="inner">
+      <div class="brand" aria-label="Manabis ロゴ">
+        <!-- ロゴ画像のみ使用（実際のロゴ画像URLを差し替えてください） -->
+        <img src="WIKIPEDIA_IMAGE_URL_LOGO" alt="Manabis ロゴ">
+        <div>
+          <h1>学習塾 Manabis 東京校</h1>
+          <div style="font-size:13px;color:rgba(255,255,255,0.95)">渋谷区恵比寿｜個別指導・少人数クラス</div>
+        </div>
+      </div>
+      <nav role="navigation" aria-label="メインナビゲーション">
+        <a href="#about">塾について</a>
+        <a href="#courses">コース</a>
+        <a href="#teachers">講師紹介</a>
+        <a href="#contact" class="cta">無料体験を申し込む</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" role="main">
+    <!-- HERO: 指定の教室写真を使用 -->
+    <section class="hero" aria-label="ヒーロー">
+      <div class="hero-card">
+        <span style="display:inline-block;background:var(--accent);color:#fff;padding:6px 12px;border-radius:999px;font-weight:800">無料体験受付中</span>
+        <h2>一人ひとりに最適化された学習で、合格と自信を育てる</h2>
+        <p class="lead">Manabis 東京校は個別指導（1:2）と少人数クラスを組み合わせ、学習履歴と目標に基づく週次プランで着実に成績を伸ばします。対面・オンライン両対応。</p>
+        <div class="features" aria-hidden="false">
+          <div class="feature">学力診断＋個別カリキュラム</div>
+          <div class="feature">志望校別対策（過去問分析）</div>
+          <div class="feature">保護者向け学習レポート</div>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+          <a href="#contact" class="btn">無料体験を申し込む</a>
+          <a href="#courses" style="padding:12px 16px;border-radius:12px;background:transparent;border:2px solid var(--accent);color:var(--accent);text-decoration:none;font-weight:800">コースを見る</a>
+        </div>
+        <ul style="margin-top:18px;color:var(--muted);font-size:14px">
+          <li><strong>対象:</strong> 小学生〜高校生</li>
+          <li><strong>所在地:</strong> 東京都渋谷区（恵比寿駅 徒歩6分想定）</li>
+        </ul>
+      </div>
+
+      <div class="hero-visual" aria-hidden="false">
+        <!-- 指定ヒーロー画像（教室写真） -->
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/De_La_Salle_University_%E2%80%93_Dasmari%C3%B1as_%28DLSU-D%29_Julian_Felipe_Hall_room_403_classroom_%E2%80%94_fisheye_view.jpg/640px-De_La_Salle_University_%E2%80%93_Dasmari%C3%B1as_%28DLSU-D%29_Julian_Felipe_Hall_room_403_classroom_%E2%80%94_fisheye_view.jpg" alt="教室の写真（fisheye view）">
+        <div class="overlay-cta">直近合格実績: 国公立大合格率 48%・私立難関合格多数</div>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section id="about" aria-labelledby="about-title">
+      <div class="card">
+        <h3 id="about-title">Manabis 東京校の強み</h3>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">
+          <div style="flex:1;min-width:240px">
+            <h4 style="margin-bottom:6px">個別最適化された学習設計</h4>
+            <p class="muted">入塾時の学力診断と保護者面談で目標を明確化。週次で学習計画を更新し、弱点を重点的に補強します。</p>
+          </div>
+          <div style="flex:1;min-width:240px">
+            <h4 style="margin-bottom:6px">実績ある講師陣</h4>
+            <p class="muted">難関大学出身・教育経験豊富な講師が、思考力と解法の本質を指導します。講師は全員面接・研修を経て採用。</p>
+          </div>
+          <div style="flex:1;min-width:240px">
+            <h4 style="margin-bottom:6px">保護者連携と学習管理</h4>
+            <p class="muted">学習管理アプリで宿題・進捗を共有。定期的な保護者面談で家庭学習の改善点を提案します。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Courses -->
+    <section id="courses" aria-labelledby="courses-title">
+      <h3 id="courses-title">コース・料金（代表例）</h3>
+      <div class="grid-3" role="list" style="margin-top:12px">
+        <div class="card" role="listitem">
+          <h4>基礎力定着コース（小学生）</h4>
+          <p class="muted">国語・算数の基礎固め。学習習慣の定着を重視した個別指導。</p>
+          <div style="margin-top:8px"><span class="price">月額 11,000円〜</span></div>
+          <div class="muted small" style="margin-top:8px"><strong>頻度:</strong> 週1回（60分）〜</div>
+        </div>
+        <div class="card" role="listitem">
+          <h4>定期テスト対策コース（中学生）</h4>
+          <p class="muted">定期テストの範囲に合わせた少人数クラス＋個別フォロー。</p>
+          <div style="margin-top:8px"><span class="price">月額 18,000円〜</span></div>
+          <div class="muted small" style="margin-top:8px"><strong>頻度:</strong> 週2回（90分）推奨</div>
+        </div>
+        <div class="card" role="listitem">
+          <h4>大学受験コース（高校生）</h4>
+          <p class="muted">志望校別カリキュラム・過去問演習・面接対策を含む総合コース。</p>
+          <div style="margin-top:8px"><span class="price">月額 34,000円〜</span></div>
+          <div class="muted small" style="margin-top:8px"><strong>頻度:</strong> 週2〜4回（個別調整）</div>
+        </div>
+      </div>
+      <p style="margin-top:12px;color:var(--muted)">※入塾金・教材費は別途。個別プランで料金は変動します。学割・兄弟割引あり。</p>
+    </section>
+
+    <!-- Teachers: 講師写真はロゴのみを使用 -->
+    <section id="teachers" aria-labelledby="teachers-title">
+      <h3 id="teachers-title">講師紹介（主要メンバー）</h3>
+      <div class="grid-3" style="margin-top:12px">
+        <div class="card teacher" role="article" aria-label="講師 佐藤">
+          <!-- 講師写真はロゴのみ表示（肖像権を避けるため） -->
+          <img src="WIKIPEDIA_IMAGE_URL_LOGO" alt="Manabis ロゴ">
+          <div>
+            <h4 style="margin:0">佐藤 智也</h4>
+            <div class="small muted">数学・物理担当 / 東京大学理学部卒</div>
+            <p style="margin-top:8px;font-size:14px" class="muted">受験数学の本質を伝える授業で定評。個別指導歴10年、難関大合格者多数。</p>
+          </div>
+        </div>
+
+        <div class="card teacher" role="article" aria-label="講師 中村">
+          <img src="WIKIPEDIA_IMAGE_URL_LOGO" alt="Manabis ロゴ">
+          <div>
+            <h4 style="margin:0">中村 彩</h4>
+            <div class="small muted">英語・小論文担当 / 早稲田大学文学部卒</div>
+            <p style="margin-top:8px;font-size:14px" class="muted">英語4技能をバランスよく伸ばす指導。面接・小論文対策も担当。</p>
+          </div>
+        </div>
+
+        <div class="card teacher" role="article" aria-label="講師 山田">
+          <img src="WIKIPEDIA_IMAGE_URL_LOGO" alt="Manabis ロゴ">
+          <div>
+            <h4 style="margin:0">山田 翔太</h4>
+            <div class="small muted">国語・現代文担当 / 教員免許保有</div>
+            <p style="margin-top:8px;font-size:14px" class="muted">読解力を鍛える授業で得点力アップ。定期テスト対策も得意。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gallery: 指定の教室写真を使用 -->
+    <section aria-labelledby="gallery-title">
+      <h3 id="gallery-title">教室の様子（イメージ）</h3>
+      <div class="gallery" role="list" style="margin-top:12px">
+        <!-- 指定ギャラリー画像 -->
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Toshin-eisei-yobiko-Toyota-eki-Minami.jpg/640px-Toshin-eisei-yobiko-Toyota-eki-Minami.jpg" alt="教室外観・校舎イメージ">
+        <!-- 2枚目はヒーローと同じ写真の別トリミングとしても使える -->
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/De_La_Salle_University_%E2%80%93_Dasmari%C3%B1as_%28DLSU-D%29_Julian_Felipe_Hall_room_403_classroom_%E2%80%94_fisheye_view.jpg/640px-De_La_Salle_University_%E2%80%93_Dasmari%C3%B1as_%28DLSU-D%29_Julian_Felipe_Hall_room_403_classroom_%E2%80%94_fisheye_view.jpg" alt="教室の内観（fisheye view）">
+        <img src="WIKIPEDIA_IMAGE_URL_LOGO" alt="Manabis ロゴ（教室案内用）">
+      </div>
+      <p class="muted" style="margin-top:8px">写真はイメージです。実際の教室写真は随時更新します。</p>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" aria-labelledby="contact-title">
+      <h3 id="contact-title">お問い合わせ・無料体験申込</h3>
+      <div class="card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:12px">
+        <form class="contact" action="#" method="post" aria-label="お問い合わせフォーム" onsubmit="alert('このテンプレートでは送信は動作しません。実装時にサーバー処理を追加してください。');return false;">
+          <div>
+            <label for="name">お名前（保護者）</label>
+            <input id="name" type="text" name="name" placeholder="例: 山田 花子" required>
+          </div>
+          <div>
+            <label for="grade">学年（生徒）</label>
+            <input id="grade" type="text" name="student_grade" placeholder="例: 中学2年" required>
+          </div>
+          <div>
+            <label for="email">メールアドレス</label>
+            <input id="email" type="email" name="email" placeholder="example@example.com" required>
+          </div>
+          <div>
+            <label for="method">希望連絡方法</label>
+            <select id="method" name="contact_method" required>
+              <option value="">選択してください</option>
+              <option>メール</option>
+              <option>オンライン面談（Zoom）</option>
+            </select>
+          </div>
+          <div style="grid-column:1 / -1">
+            <label for="message">ご要望・質問</label>
+            <textarea id="message" name="message" placeholder="志望校や現在の学習状況などをご記入ください"></textarea>
+          </div>
+          <button class="btn" type="submit">送信する</button>
+        </form>
+
+        <div style="min-width:260px;flex:1">
+          <h4 style="margin-top:0">教室情報</h4>
+          <p class="muted"><strong>住所:</strong> 東京都渋谷区恵比寿南（詳細はお問い合わせ後にご案内）</p>
+          <p class="muted"><strong>受付時間:</strong> 平日 14:00〜21:00 / 土 10:00〜18:00</p>
+          <p class="muted"><strong>備考:</strong> オンライン授業（Zoom）対応。駐輪・近隣コインパーキングあり。</p>
+          <div style="margin-top:12px">
+            <a class="btn" href="#contact" aria-label="無料体験申し込み">無料体験を申し込む</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section aria-labelledby="faq-title">
+      <h3 id="faq-title">よくある質問</h3>
+      <div class="grid-3" style="margin-top:12px">
+        <div class="card">
+          <h4>無料体験は何回できますか</h4>
+          <p class="muted">初回は90分の無料体験を1回ご提供。学習状況に応じて追加体験は相談可能です。</p>
+        </div>
+        <div class="card">
+          <h4>オンライン授業は可能ですか</h4>
+          <p class="muted">可能です。Zoomを使用した双方向授業と学習管理アプリで進捗を共有します。</p>
+        </div>
+        <div class="card">
+          <h4>振替や欠席時の対応は？</h4>
+          <p class="muted">事前連絡で振替対応。急な欠席は録画授業や補講でフォローします。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@type":"EducationalOrganization",
+      "name":"学習塾 Manabis 東京校",
+      "url":"https://example.com",
+      "logo":"WIKIPEDIA_IMAGE_URL_LOGO",
+      "description":"東京都渋谷区の個別指導塾。基礎から受験対策まで対応。無料体験あり。",
+      "address":{
+        "@type":"PostalAddress",
+        "streetAddress":"恵比寿南（詳細はお問い合わせ後にご案内）",
+        "addressLocality":"渋谷区",
+        "addressRegion":"東京都",
+        "addressCountry":"JP"
+      }
+    }
+    </script>
+
+    <!-- Footer / Credits -->
+    <footer>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <strong>学習塾 Manabis 東京校</strong>
+          <div class="muted">© Manabis</div>
+        </div>
+        <div style="text-align:right">
+          <div class="muted">写真クレジット:</div>
+          <div class="muted small">教室内観: De La Salle University — Julian Felipe Hall room 403 (Wikimedia Commons)</div>
+          <div class="muted small">校舎イメージ: 東進衛星予備校（Wikimedia Commons）</div>
+          <div class="muted small">ぜひ校舎までご相談に来てください。</div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function(){})();
+  </script>
+</body>
+</html>
