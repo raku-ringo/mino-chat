@@ -119,7 +119,7 @@ app.get('/api/admins', (req,res) => {
 
 app.post('/api/pass', (req,res) => {
   const { password } = req.body;
-  if (password === "min113") {
+  if (password === "pluscrown") {
     chatMessages = [];
     io.emit('clearMessages');
     return res.status(200).json({ message: "全てのメッセージを削除しました。" });
