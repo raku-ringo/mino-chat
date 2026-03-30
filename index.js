@@ -166,6 +166,10 @@ io.on('connection', (socket) => {
     io.emit('updateReaction', { messageId, reactions: msg.reactions });
   });
 
+  socket.on('banUser', (data) => {
+    io.emit('banned', data);
+  });
+
   socket.on('joinRoom', ({ roomId, username }) => {
     if (!roomId) return;
     socket.join(roomId);
