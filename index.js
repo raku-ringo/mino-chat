@@ -25,6 +25,35 @@ const ADMIN_REDIRECT_URL = 'https://mino-security.netlify.app';
 
 function nowISO(){ return new Date().toISOString(); }
 
+// --- ここからレートリミット関連追加コード ---
+const RATE_WINDOW_MS = 5000; // 5秒
+const RATE_MAX = 10;         // 10コメントまで
+const ipMessageLog = new Map();
+
+function getIpFromReq(req){
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string') return xff.split(',')[0].trim();
+  if (Array.isArray(xff)) return xff[0];
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+function getIpFromSocket(socket){
+  const xff = socket.handshake.headers['x-forwarded-for'];
+  if (typeof xff === 'string') return xff.split(',')[0].trim();
+  if (Array.isArray(xff)) return xff[0];
+  return socket.handshake.address || 'unknown';
+}
+
+function isRateLimited(ip){
+  const now = Date.now();
+  if (!ipMessageLog.has(ip)) ipMessageLog.set(ip, []);
+  const arr = ipMessageLog.get(ip).filter(ts => now - ts <= RATE_WINDOW_MS);
+  arr.push(now);
+  ipMessageLog.set(ip, arr);
+  return arr.length > RATE_MAX;
+}
+// --- レートリミット追加ここまで ---
+
 const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 function createInitialBoard(){
   const b = Array.from({length:8},()=>Array(8).fill(0));
@@ -83,6 +112,12 @@ app.post('/api/messages', (req,res) => {
   const { username, message, time, reactions, seed } = req.body;
   if (!username || !message || !time) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // レートリミットチェック（HTTP）
+  const ip = getIpFromReq(req);
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: '短時間にコメントを送りすぎています。少し時間をおいてから再度お試しください。' });
   }
   
   const newMsg = {
@@ -145,6 +180,12 @@ io.on('connection', (socket) => {
   console.log('connected', socket.id);
 
   socket.on('sendMessage', (data) => {
+    // レートリミットチェック（Socket.IO）
+    const ip = getIpFromSocket(socket);
+    if (isRateLimited(ip)) {
+      return;
+    }
+
     const newMsg = {
       id: uuidv4(),
       username: data.username || '匿名',
