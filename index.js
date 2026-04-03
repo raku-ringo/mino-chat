@@ -137,16 +137,15 @@ app.post('/api/messages', (req,res) => {
 });
 
 app.post('/api/admin-login', (req,res) => {
-  // 変更点: ユーザー名ではなく seed で管理者判定するように変更
-  // seed が空でない場合はパスワード認証で管理者になれる（seed 必須）
-  const { seed, password } = req.body;
-  if (!seed || !password) return res.status(400).json({ error: 'seed and password required' });
-  // パスワードが正しければ、seed が空でない限り admins に登録する
+  // 変更点: seed は不要にし、パスワードが正しければ誰でも管理者になれるようにする
+  // 名前で管理しないため、生成した管理者IDを admins に保存する
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'password required' });
   if (password === ADMIN_PASSWORD) {
-    // seed が空でないことは上でチェック済み
-    admins.add(seed);
+    const adminId = uuidv4();
+    admins.add(adminId);
     io.emit('adminUpdate', Array.from(admins));
-    return res.json({ ok: true, url: ADMIN_REDIRECT_URL });
+    return res.json({ ok: true, url: ADMIN_REDIRECT_URL, adminId });
   } else {
     return res.status(403).json({ ok: false, error: 'Invalid password' });
   }
